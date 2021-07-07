@@ -1,0 +1,69 @@
+// codare ♥
+  const { MessageButton } = require('discord-buttons')(client);
+  const database = require('quick.db');
+  const allDatas = [
+    { roleID: 'birinci rol id' },// buraya verilecek/alınacak rol idlerini yazın tek tek
+    { roleID: 'ikinci rol id' }
+  ]
+  client.on('message', async message => {
+    var prefix = '';// prefixinz
+    if(message.content.startsWith(prefix+'buttonrole') || message.content.startsWith(prefix+'br')) {
+      var args = message.content.split(/ +/g).slice(1);
+
+      if(!message.member.hasPermission('ADMINISTRATOR')) return message.channel.send('Bu komutu kullanmak için yeterli yetkin yok.');
+      if(!args[0]) return message.channel.send('Bir argüman belirtmen gerekiyor. Kullanabileceklerin: ekle, sil');
+    
+      if(args[0] === 'kur') {
+    
+        var channel;
+        if(!message.mentions.channels.first()) {
+          const newArgs = args.reverse();
+          newArgs.push('');
+          args = newArgs.reverse();
+          channel = message.channel;
+        } else {
+          channel = message.mentions.channels.first();
+        };
+        if(!channel) return message.channel.send('Etiketlediğin kanalı bulamıyorum.');
+    
+        if(!args[2]) return message.channel.send('Bir mesaj ID\'si belirtmelisin.');
+        var messageFetch = await channel.messages.fetch(args[2]).catch(error => {
+          return message.channel.send('Yanlış bir mesaj ID\'si belirttin yada bu mesajı etiketlediğin kanalda bulamıyorum.');
+        });
+        if(messageFetch.id !== args[2]) return;
+    
+        messageFetch.delete();
+        if(!messageFetch.content) return; 
+
+        database.delete(`emoji-rol.${message.guild.id}`);
+        const buttons = [];
+        allDatas.forEach(data => {
+          database.push(`emoji-rol.${message.guild.id}`, {
+            name: message.guild.roles.cache.get(data.roleID).name
+          });
+          buttons.push(new MessageButton()
+          .setStyle('blurple')
+          .setLabel(message.guild.roles.cache.get(data.roleID).name)
+          .setID(message.guild.roles.cache.get(data.roleID).name));
+        });
+
+        return channel.send(messageFetch.content, { buttons: buttons });
+      };
+
+    };
+  });
+
+  client.on('clickButton', async (button) => {
+    const data = await database.fetch(`emoji-rol.${button.guild.id}`);
+    if(data && data.length > 0 && data.some(c => c.name == button.id)) {
+
+      const finded = data.find(c => c.name == button.id);
+      if(button.clicker.member.roles.cache.has(button.guild.roles.cache.find(x => x.name == finded.name).id)) {
+        return button.clicker.member.roles.remove(button.guild.roles.cache.find(x => x.name == finded.name).id);
+      } else {
+        return button.clicker.member.roles.add(button.guild.roles.cache.find(x => x.name == finded.name).id);
+      };
+
+    };
+  });
+};// codare ♥
